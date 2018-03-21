@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+<title>Well Known Text (WKT)</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.js'></script>
+<link href='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.css' rel='stylesheet' />
+<script
+  src="http://code.jquery.com/jquery-3.3.1.js"
+  integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+  crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.5/lodash.js"></script>
+<style>
+  body { margin:0; padding:0; }
+  #map { position:absolute; top:0; bottom:0; width:100%; }
+  #text-input 
+  {
+    position:absolute;
+    left:0;
+    bottom:0;
+    width:400px;
+    height:300px;
+  }
+</style>
+</head>
+<body>
+<script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.2.0/leaflet-omnivore.min.js'></script>
+
+<div id='map'></div>
+
+<script>
+L.mapbox.accessToken = 'pk.eyJ1IjoiYW1hdSIsImEiOiIxTmxLVWlVIn0.JJuKgBjkpUtOs0VZjtmJRw';
+
+var ZOOM_THRESHOLD = 15;
+var zoom = 14;
+
+var map = L.mapbox.map('map', 'mapbox.satellite').setView([20.6, -103.3], zoom);
+if (map.scrollWheelZoom) {
+  map.scrollWheelZoom.disable();
+}
+
+
+var controlLayers = L.control.layers().addTo(map);
+
+
+var chunksUrl = "http://localhost:8000/chunks/";
+var footprintsUrl = "http://localhost:8000/footprints";
+
+/**
+var chunksLayer = L.geoJSON();
+**/
+var bitsLayer = L.geoJSON();
+var landsatLayer = L.geoJSON();
+var sentinelLayer = L.geoJSON();
+var rapideyeLayer = L.geoJSON();
+
+
+
+
+controlLayers.addOverlay(bitsLayer, 'BITS Objects');
+controlLayers.addOverlay(landsatLayer, 'Landsat Footprints');
+controlLayers.addOverlay(sentinelLayer, 'Sentinel Footprints');
+controlLayers.addOverlay(rapideyeLayer, 'Rapideye Footprints');
+
+//chunksLayer.addTo(map);
+
+
+bitsLayer.addTo(map);
+landsatLayer.addTo(map);
+sentinelLayer.addTo(map);
+rapideyeLayer.addTo(map);
+
+/**
+fetch(chunksUrl)
+    .then((resp) => resp.json())
+    .then(function(data) {
+        console.log(data);
+        data['results'].forEach(function(obj){
+            var polygon = omnivore.wkt.parse(obj.the_geom);
+
+            polygon.setStyle({
+                'color': 'red',
+                'fillOpacity': 0
+            });
+
+            polygon.addTo(chunksLayer);
+        });
+    });
+**/
+
+fetchFootprints(footprintsUrl + "?sensor=landsat", landsatLayer, 'green');
+fetchFootprints(footprintsUrl + "?sensor=rapideye", rapideyeLayer, 'red');
+fetchFootprints(footprintsUrl + "?sensor=sentinel", sentinelLayer, 'blue');
+
+function fetchFootprints(url, layer, color) {
+    fetch(url)
+        .then((resp) => resp.json())
+        .then(function(data) {
+            console.log(data);
+            data['results'].forEach(function(obj){
+                var polygon = omnivore.wkt.parse(obj.the_geom);
+    
+                polygon.setStyle({
+                    'color': color,
+                    'fillOpacity': 0.5
+                });
+    
+                polygon.addTo(layer);
+            });
+            if(data.next && keepGoing) {
+                fetchFootprints(data.next, layer, color);
+            }
+        });
+}
+
+
+
+
+var keepGoing = true;
+function recursiveFetch(url) {
+    fetch(url)
+    .then((resp) => resp.json())
+    .then(function(data) {
+        data['results'].forEach(function(obj){
+            var polygon = omnivore.wkt.parse(obj["train_object"]["the_geom"]);
+            if(painted.indexOf(obj["pk"]) < 0){
+                painted.push(obj["pk"])
+                var color = "#fff";
+                color = getColor(obj["interpret_tag"]["numeric_code"]);
+                polygon.setStyle({fillColor: color,
+                              fillOpacity:.7,
+                              stroke:false}).addTo(bitsLayer);
+            }
+        });
+
+        if(data.next && keepGoing) {
+            recursiveFetch(data.next);
+            console.log("Total objects: " + painted.length)
+        }
+    }).catch(function(error) {
+        console.log(error);
+    });
+}
+
+var painted = []
+
+function getColor(tag) {
+    var text;
+    switch(tag) {
+    case 0:
+        text = "#000000";
+        break;
+    case 1:
+        text = "#005100";
+        break;
+    case 2:
+        text = "#007e00";
+        break;
+    case 3:
+        text = "#003c00";
+        break;
+    case 4:
+        text = "#aaaa00";
+        break;
+    case 5:
+        text = "#aa8000";
+        break;
+    case 6:
+        text = "#8baa00";
+        break;
+    case 7:
+        text = "#ffb265";
+        break;
+    case 8:
+        text = "#00d900";
+        break;
+    case 9:
+        text = "#aa007f";
+        break;
+    case 10:
+        text = "#ff55ff";
+        break;
+    case 11:
+        text = "#ff557f";
+        break;
+    case 12:
+        text = "#ff007f";
+        break;
+    case 13:
+        text = "#ff55ff";
+        break;
+    case 14:
+        text = "#aaffff";
+        break;
+    case 15:
+        text = "#00ffff";
+        break;
+    case 16:
+        text = "#55aaff";
+        break;
+    case 17:
+        text = "#e29700";
+        break;
+    case 18:
+        text = "#bd7e00";
+        break;
+    case 19:
+        text = "#966400";
+        break;
+    case 20:
+        text = "#a2ecb1";
+        break;
+    case 21:
+        text = "#c46200";
+        break;
+    case 22:
+        text = "#aa5500";
+        break;
+    case 23:
+        text = "#6d3600";
+        break;
+    case 24:
+        text = "#00aa7f";
+        break;
+    case 25:
+        text = "#008a65";
+        break;
+    case 26:
+        text = "#005941";
+        break;
+    case 27:
+        text = "#e9e9af";
+        break;
+    case 28:
+        text = "#0b5923";
+        break;
+    case 29:
+        text = "#faff98";
+        break;
+    case 30:
+        text = "#4d1009";
+        break;
+    case 31:
+        text = "#000ff0";
+        break;
+    case 32:
+        text = "#00007f";
+        break;
+    case 33:
+        text = "#000000";
+        break;
+    case 34:
+        text = "#fef7ff";
+        break;
+    
+  }
+  return text;
+}
+
+var debouncedRecursiveFetch = _.debounce(recursiveFetch, 250);
+
+/**
+
+x = -117.324592;
+y = 32.688773;
+
+for(var i = 0 ; i < 3; i++) {
+    for(var j = 0 ; j < 2; j++) {
+
+        var poly = 'POLYGON ((' + (x + i * 10)  + ' ' + (y - j * 10) + ', ' + (x + (i + 1) * 10) + ' ' + (y - j * 10) + ', ' + (x + (i + 1) * 10) + ' ' + (y - (j + 1) * 10) + ', ' + (x + i * 10) + ' ' + (y - (j + 1) * 10) + ', ' + (x + i * 10)  + ' ' + (y - j * 10) + '))';
+
+        console.log(poly);
+        omnivore.wkt.parse(poly).addTo(map);
+    }
+}
+
+**/
+
+
+//omnivore.wkt.parse('POLYGON ((-104.17943713265609 22.717679538048635, -103.52991113325533 22.725427349147733, -103.52260032512015 22.090316230757306, -104.16902331766224 22.082607135366963, -104.17943713265609 22.717679538048635))').addTo(map);
+
+//omnivore.wkt.parse('POINT (-102.194400305139 22.0931967429975)').addTo(map);
+//omnivore.wkt.parse('POINT (-102.190355491115 21.6416837286475)').addTo(map);
+//omnivore.wkt.parse('POINT (-102.186337979379 21.1902880118627)').addTo(map);
+//omnivore.wkt.parse('POINT (-101.702269055753 21.1932596124829)').addTo(map);
+//omnivore.wkt.parse('POINT (-101.218184132426 21.1947078961006)').addTo(map);
+//omnivore.wkt.parse('POINT (-101.218923041703 21.6461198687154)').addTo(map);
+//omnivore.wkt.parse('POINT (-101.219666972811 22.0976489772247)').addTo(map);
+//omnivore.wkt.parse('POINT (-101.707041803038 22.0961900936989)').addTo(map);
+//omnivore.wkt.parse('POINT (-102.194400305139 22.0931967429975)').addTo(map);
+
+map.on('zoomend', loadObjects);
+map.on('moveend', loadObjects);
+
+
+
+function loadObjects() {
+    var upperLeftX = map.getBounds()._northEast.lng;
+    var upperLeftY = map.getBounds()._northEast.lat;
+    var lowerRightX = map.getBounds()._southWest.lng;
+    var lowerRightY = map.getBounds()._southWest.lat;
+
+    zoom = map.getZoom();
+    console.log("Current position: " + map.getCenter());
+
+    var boundingBox = 'POLYGON ((' + upperLeftX +' ' + upperLeftY + ',' + lowerRightX + ' ' + upperLeftY +',' + lowerRightX + ' ' + lowerRightY + ',' + upperLeftX + ' ' + lowerRightY + ',' + upperLeftX +' ' + upperLeftY + '))';
+
+
+    var url = 'http://localhost:8000/objects/?format=json' + '&polygon=' + encodeURIComponent(boundingBox);
+
+    if(zoom > ZOOM_THRESHOLD){
+        //debouncedRecursiveFetch.cancel();
+        //keepGoing = false;
+        debouncedRecursiveFetch(url);
+        //keepGoing = true;
+    }
+}
+
+
+function plotWKT(){
+    var textArea = document.getElementById('text-input');
+    omnivore.wkt.parse(textArea.value).addTo(map);
+}
+
+function plotFromWKT(wkt){
+    omnivore.wkt.parse(wkt).addTo(map);
+}
+
+var currentLayers = [];
+
+
+</script>
+</body>
+</html>
