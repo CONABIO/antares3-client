@@ -47,10 +47,9 @@
 <script>
 L.mapbox.accessToken = 'pk.eyJ1IjoiYW1hdSIsImEiOiIxTmxLVWlVIn0.JJuKgBjkpUtOs0VZjtmJRw';
 
-var ZOOM_THRESHOLD = 16;
+var ZOOM_THRESHOLD = 5;
 var zoom = 16;
-
-var map = L.mapbox.map('map', 'mapbox.satellite').setView([ 17.11521, -61.83207], zoom);
+var map = L.mapbox.map('map', 'mapbox.satellite').setView([22.74251, -82.48273], zoom);
 if (map.scrollWheelZoom) {
   map.scrollWheelZoom.disable();
 }
@@ -59,10 +58,10 @@ if (map.scrollWheelZoom) {
 var controlLayers = L.control.layers().addTo(map);
 
 
-var chunksUrl = "http://localhost:8000/chunks/";
-var footprintsUrl = "http://localhost:8000/footprints";
-var tagsUrl = "http://localhost:8000/tags/";
-var caribeUrl = "http://localhost:8000/caribe/";
+var chunksUrl = "http://172.16.6.120:8000/chunks/";
+var footprintsUrl = "http://172.16.6.120:8000/footprints";
+var tagsUrl = "http://172.16.6.120:8000/tags/";
+var caribeUrl = "http://172.16.6.120:8000/caribe/";
 var tags = null;
 var selector = document.createElement('select');
 
@@ -211,7 +210,7 @@ info.update = function (obj, polygonId) {
             
 
             var xhr = new XMLHttpRequest();
-            xhr.open('PATCH', 'http://localhost:8000/caribe/'+obj["pk"]+'/');
+            xhr.open('PATCH', 'http://172.16.6.120:8000/caribe/'+obj["pk"]+'/');
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onload = function() {
                 if (xhr.status === 200) {
@@ -234,7 +233,7 @@ info.update = function (obj, polygonId) {
     }
 };
 
-info.addTo(map);
+//info.addTo(map);
 
 function recursiveFetch(url) {
     fetch(url)
@@ -443,7 +442,7 @@ function loadObjects() {
     var boundingBox = 'SRID=4326;POLYGON ((' + upperLeftX +' ' + upperLeftY + ',' + lowerRightX + ' ' + upperLeftY +',' + lowerRightX + ' ' + lowerRightY + ',' + upperLeftX + ' ' + lowerRightY + ',' + upperLeftX +' ' + upperLeftY + '))';
 
 
-    var url = 'http://localhost:8000/caribe/?format=json' + '&polygon=' + encodeURIComponent(boundingBox);
+    var url = 'http://172.16.6.120:8000/caribe/?format=json' + '&polygon=' + encodeURIComponent(boundingBox);
 
     if(zoom > ZOOM_THRESHOLD){
         //debouncedRecursiveFetch.cancel();
